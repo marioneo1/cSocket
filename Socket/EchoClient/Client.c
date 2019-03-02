@@ -6,6 +6,7 @@
 #include <unistd.h> /* for close() */
 
 #define RCVBUFSIZE 32 /* Size of receive buffer */
+#define SENDBUFSIZE 500 /*Size of send buffer */
 
 void DieWithError(char *errorMessage); /* Error handling function */
 
@@ -14,66 +15,123 @@ int main(int argc, char *argv[])
     int sock; /* Socket descriptor */
     struct sockaddr_in echoServAddr; /* Echo server address */
     unsigned short echoServPort; /* Echo server port */
-    char *servlP; /* Server IP address (dotted quad) */
-    char *echoString; /* String to send to echo server */
+    char *servlP = (char*)malloc(20*sizeof(char)); /* Server IP address (dotted quad) */
+    // char *echoString = (char*)malloc(SENDBUFSIZE); /* String to send to echo server (Max 250)*/
+    char *message = (char*)malloc(SENDBUFSIZE); /* String to send to server */
+    char *input = (char*)malloc(RCVBUFSIZE);
     char echoBuffer[RCVBUFSIZE]; /* Buffer for echo string */
     unsigned int echoStringLen; /* Length of string to echo */
     int bytesRcvd, totalBytesRcvd; /* Bytes read in single recv() and total bytes read */
+    int userOption;
+    int socketOpen = 0, socketInit = 0;
+    
 
-    if ((argc < 3) || (argc > 4)) /* Test for correct number of arguments */
-    {
-        fprintf(stderr, "Usage: %s <Server IP> <Echo Word> [<Echo Port>]\n", argv[0]);
-        exit(1);
+    do{
+    printf("----------------------------------\n");
+    printf("0. Connect to the server\n");
+    printf("1. Get user list\n");
+    printf("2. Send a message\n");
+    printf("3. Get my messages\n");
+    printf("4. Initiate a chat with my friend\n");
+    printf("5. Chat with my friend\n");
+    printf("Your option <enter a number> :\t");
+
+    fgets(input, RCVBUFSIZE, stdin);
+    userOption = strtol(input, NULL, 10);
+    // scanf("%d", &userOption);
+
+    switch(userOption){
+        case 0:
+        printf("Your choice is %d\n", userOption);
+
+        /*Set server IP Address*/
+        printf("Please enter the IP Address:\t");
+        fgets(servlP, RCVBUFSIZE, stdin); 
+
+        /*Set port number*/
+        printf("Please enter the port number:\t");
+        fgets(input, RCVBUFSIZE, stdin);
+        echoServPort = strtol(input, NULL, 10);
+
+        /*Socket Condition Initialized*/
+        socketOpen = 1;
+        break;
+        case 1:
+        printf("Your choice is %d\n", userOption);
+        break;
+        case 2:
+        printf("Your choice is %d\n", userOption);
+        printf("Please enter the username:\t");
+        printf("\nPlease enter the message:\t");
+        fgets(message, SENDBUFSIZE, stdin);
+        printf("%s", message);
+
+        echoStringLen = strlen(message); /* Determine input length */
+
+        /* Send the string to the server */
+        if (send(sock, message, echoStringLen, 0) != echoStringLen)
+        DieWithError("send() sent a different number of bytes than expected");
+        break;
+        case 3:
+        printf("Your choice is %d\n", userOption);
+
+        /* Receive the same string back from the server */
+        totalBytesRcvd = 0;
+        printf("Received: "); /* Setup to print the echoed string */
+        while (totalBytesRcvd < echoStringLen)
+        {
+        
+            /* Receive up to the buffer size (minus i to leave space for a null terminator) bytes from the sender */
+            if ((bytesRcvd = recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0)
+                DieWithError("recv() failed or connection closed prematurely");
+            totalBytesRcvd += bytesRcvd; /* Keep tally of total bytes */
+            echoBuffer[bytesRcvd] = '\0'; /* Terminate the string! */
+            printf(echoBuffer); /* Print the echo buffer */
+        }
+        break;
+        case 4:
+        printf("Your choice is %d\n", userOption);
+        socketOpen = 0;
+        // close(sock);
+        break;
+        case 5:
+        printf("Your choice is %d\n", userOption);
+        break;
+        case 6:
+        printf("Your choice is %d\n", userOption);
+        socketOpen = 0;
+        // close(sock);
+        break;
     }
 
-    servlP = argv[1] ; /* First arg' server IP address (dotted quad) */
-    echoString = argv[2] ; /* Second arg' string to echo */
-
-    if (argc == 4)
-        echoServPort = atoi(argv[3]); /* Use given port, if any */
-    else
-        echoServPort = 7; /* 7 is the well-known port for the echo service */
+    /*Input Checkers*/
+    printf("%s",servlP);
+    printf("%d\n",echoServPort);
 
 
-/* Create a reliable, stream socket using TCP */
-    if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-    DieWithError(" socket () failed") ;
+    if (socketInit < 1){
+        /* Create a reliable, stream socket using TCP */
+        if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+        DieWithError(" socket () failed") ;
 
 
-/* Construct the server address structure */
-    memset(&echoServAddr, 0, sizeof(echoServAddr)); /* Zero out structure */
-    echoServAddr.sin_family = AF_INET; /* Internet address family */
-    echoServAddr.sin_addr.s_addr = inet_addr(servlP); /* Server IP address */
-    echoServAddr.sin_port = htons(echoServPort); /* Server port */
+        /* Construct the server address structure */
+        memset(&echoServAddr, 0, sizeof(echoServAddr)); /* Zero out structure */
+        echoServAddr.sin_family = AF_INET; /* Internet address family */
+        echoServAddr.sin_addr.s_addr = inet_addr(servlP); /* Server IP address */
+        echoServAddr.sin_port = htons(echoServPort); /* Server port */
 
 
-/* Establish the connection to the echo server */
-    if (connect(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
+        /* Establish the connection to the echo server */
+        if (connect(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
         DieWithError(" connect () failed");
 
-    echoStringLen = strlen(echoString); /* Determine input length */
-
-
-/* Send the string to the server */
-    if (send(sock, echoString, echoStringLen, 0) != echoStringLen)
-        DieWithError("send() sent a different number of bytes than expected");
-
-
-/* Receive the same string back from the server */
-    totalBytesRcvd = 0;
-    printf("Received: "); /* Setup to print the echoed string */
-    while (totalBytesRcvd < echoStringLen)
-    {
-        
-        /* Receive up to the buffer size (minus i to leave space for a null terminator) bytes from the sender */
-        if ((bytesRcvd = recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0)
-            DieWithError("recv() failed or connection closed prematurely");
-        totalBytesRcvd += bytesRcvd; /* Keep tally of total bytes */
-        echoBuffer[bytesRcvd] = '\0'; /* Terminate the string! */
-        printf(echoBuffer); /* Print the echo buffer */
+        socketInit = 1;
     }
 
     printf("\n"); /* Print a final linefeed */
+    printf("Socket still open (1=True, 0=False):\t%d\n",socketOpen);
+    } while(socketOpen == 1);
 
     close(sock);
     exit(0);

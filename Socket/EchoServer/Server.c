@@ -43,6 +43,10 @@ int main(int argc, char *argv[])
     /* Mark the socket so it will listen for incoming connections */
     if (listen(servSock, MAXPENDING) < 0)
         DieWithError("listen() failed") ;
+
+printf("Server Started!\n");
+printf("Listening on port: %d\n",echoServPort);
+
     for (;;) /* Run forever */
     {
         /* Set the size of the in-out parameter */
