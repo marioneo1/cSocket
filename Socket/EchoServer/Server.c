@@ -15,6 +15,13 @@
 void DieWithError(char *errorMessage); /* Error handling function */
 void HandleTCPClient(int clntSocket); /* TCP client handling function */
 
+// char *concat(const char *s1, const char *s2){
+//     char *result = malloc(strlen(s1) + strlen(s2)+1);
+//     strcpy(result,s1);
+//     strcat(result,s2);
+//     return result;
+// }
+
 int main(int argc, char *argv[])
 {
     int servSock; /* Socket descriptor for server */
@@ -24,10 +31,13 @@ int main(int argc, char *argv[])
     unsigned short echoServPort; /* Server port */
     unsigned int clntLen; /* Length of client address data structure */
     int servAddrLen;
-    int max_sd, max_clients = 30, clientSockets[30], socketDescriptor, socketActivity, rVal, err;
+    int max_sd, max_clients = 30, clientSockets[30], socketDescriptor, socketActivity, rVal, rVal2, err;
     fd_set readfds;
-    char *message = "Connected!\n";
+    char *usermail =malloc(BUFFER);
+    char *message =malloc(BUFFER);
     char *buffer =malloc(BUFFER);
+    char *tempString =malloc(BUFFER);
+    char *option = (char*)malloc(2*sizeof(char));
     int num_users = 2;
     char uval[25], pval[25];
 
@@ -40,6 +50,7 @@ int main(int argc, char *argv[])
     struct Account alice = {"Alice", "12345"};
     struct Account bob = {"Bob", "56789"};
     struct Account accounts[2] = {alice, bob};
+
 
     if (argc != 2) /* Test for correct number of arguments */
     {
@@ -86,7 +97,7 @@ servAddrLen = sizeof(echoServAddr);
         /*Add server socket to set*/
         FD_SET(servSock, &readfds);
         max_sd = servSock;
-        printf("maxsd:%d\n",max_sd);
+        // printf("maxsd:%d\n",max_sd);
 
         /*Add other sockets to set*/
         for(int i = 0; i < max_clients; i++){
@@ -142,7 +153,7 @@ servAddrLen = sizeof(echoServAddr);
                 strcpy(pval,buffer);
                 printf("pval : %s\n",pval);
             }
-            printf("Buffer Result: %s", buffer);
+            printf("Buffer Result in ServSock: %s\n", buffer);
 
             for(int i=0;i<num_users;i++){
                 // printf("uval:%s pass:%s\n", uval,pval);
@@ -155,27 +166,68 @@ servAddrLen = sizeof(echoServAddr);
                 }
             } 
         }
-        // memset(buffer,0,strlen(buffer));
+        memset(buffer,0,strlen(buffer));
             for (int i=0; i < max_clients; i++){
                 socketDescriptor= clientSockets[i];
                 /*Actions here*/
                 if(FD_ISSET(socketDescriptor, &readfds)){
                         // (rVal = read(socketDescriptor, buffer, 1024)
-                    if((rVal = recv(clntSock, buffer, 1024, 0))<=0){
-                        getpeername(socketDescriptor, (struct sockaddr*)&echoServAddr, &clntLen);
-                        printf("Host disconnected, ip %s, port %d\n",inet_ntoa(echoServAddr.sin_addr),ntohs(echoServAddr.sin_port));
+                    if((rVal = recv(socketDescriptor, buffer, 1024, 0))<=0){
+                        // getpeername(socketDescriptor, (struct sockaddr*)&echoServAddr, &clntLen);
+                        // printf("Host disconnected, ip %s, port %d\n",inet_ntoa(echoServAddr.sin_addr),ntohs(echoServAddr.sin_port));
+                        getpeername(socketDescriptor, (struct sockaddr*)&echoClntAddr, &clntLen);
+                        printf("Host disconnected, ip %s, port %d\n",inet_ntoa(echoClntAddr.sin_addr),ntohs(echoClntAddr.sin_port));
                         close(socketDescriptor);
                         clientSockets[i] = 0;
                     }
                     else{
                         buffer[strcspn(buffer,"\n")] = 0;
                         printf("Current sd:%d\n",socketDescriptor);
-                        printf("Buffer Result: %s", buffer);
-                        /*List users*/
-                        for(int i = 0; i<num_users; i++){
-                        printf("\n%s",accounts[i].username);
+                        printf("Buffer Result: %s\n", buffer);
+                        option = buffer;
+                        if (strcmp(option,"1")==0){
+                            /*List users*/
+                            memset(buffer,0,strlen(buffer));
+                            sprintf(buffer,"%d",num_users);
+                            send(socketDescriptor, buffer, 1024,0); /*Send the number of users*/
+
+                            for(int j = 0; j < num_users; j++){
+                                strcpy(tempString,accounts[j].username); /*Make a copy to not erase data with memset*/
+                                strcat(tempString,"\n"); /*Add newline to the copy*/
+                                send(socketDescriptor, tempString, strlen(tempString) , 0); /*Send users*/
+                            }
+                            // printf("Accounts: %s, %s\n", accounts[0].username,accounts[1].username);
+                            memset(tempString,0,strlen(tempString));
                         }
-                        send(socketDescriptor, buffer, strlen(buffer), 0);
+                        else if (strcmp(option,"2")==0){
+                            if(rVal2 = recv(socketDescriptor, message, 1024, 0)>0){
+                                message[strcspn(message,"\n")] = 0;
+                                printf("Message is : %s\n",message);
+
+                            }
+                            else{
+                                printf("Error in message.");
+                                exit(-1);
+                            }
+                        }
+                        else if (strcmp(option,"3")==0){
+                            /*Received by username*/
+                            if(rVal2 = recv(socketDescriptor, message, 1024, 0)>0){
+                                message[strcspn(message,"\n")] = 0;
+                                printf("Message is : %s\n",message);
+
+                            }
+                            else{
+                                printf("Error in message.");
+                                exit(-1);
+                            }
+
+                            /*Use username to find which socket the messagee's in*/
+
+                            send(socketDescriptor, message, strlen(message), 0);
+                            memset(message,0,strlen(message));
+                        }
+                        memset(buffer,0,strlen(buffer));
                     }
                     // HandleTCPClient (socketDescriptor);
                 }

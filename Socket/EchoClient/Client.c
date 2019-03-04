@@ -5,8 +5,11 @@
 #include <string.h> /* for memset() */
 #include <unistd.h> /* for close() */
 
-#define RCVBUFSIZE 32 /* Size of receive buffer */
-#define SENDBUFSIZE 500 /*Size of send buffer */
+#define RCVBUFSIZE 1024 /* Size of receive buffer */
+#define SENDBUFSIZE 1024 /*Size of send buffer */
+#define LOGINBUFSIZE 1024 /*Size of login buffer */
+#define PASSBUFSIZE 1024
+#define BUFFER 1024
 
 void DieWithError(char *errorMessage); /* Error handling function */
 
@@ -19,11 +22,15 @@ int main(int argc, char *argv[])
     // char *echoString = (char*)malloc(SENDBUFSIZE); /* String to send to echo server (Max 250)*/
     char *message = (char*)malloc(SENDBUFSIZE); /* String to send to server */
     char *input = (char*)malloc(RCVBUFSIZE);
+    char *login = (char*)malloc(LOGINBUFSIZE);
+    char *password = (char*)malloc(PASSBUFSIZE);
+    char *option = (char*)malloc(2*sizeof(char));
+    char *userlist = (char*)malloc(BUFFER);
     char echoBuffer[RCVBUFSIZE]; /* Buffer for echo string */
-    unsigned int echoStringLen; /* Length of string to echo */
-    int bytesRcvd, totalBytesRcvd; /* Bytes read in single recv() and total bytes read */
+    unsigned int echoStringLen, loginStringLen; /* Length of string to echo */
+    int bytesRcvd, totalBytesRcvd, receivedBytes; /* Bytes read in single recv() and total bytes read */
     int userOption;
-    int socketOpen = 0, socketInit = 0;
+    int socketOpen = 0;
     
 
     do{
@@ -38,7 +45,6 @@ int main(int argc, char *argv[])
 
     fgets(input, RCVBUFSIZE, stdin);
     userOption = strtol(input, NULL, 10);
-    // scanf("%d", &userOption);
 
     switch(userOption){
         case 0:
@@ -53,63 +59,6 @@ int main(int argc, char *argv[])
         fgets(input, RCVBUFSIZE, stdin);
         echoServPort = strtol(input, NULL, 10);
 
-        /*Socket Condition Initialized*/
-        socketOpen = 1;
-        break;
-        case 1:
-        printf("Your choice is %d\n", userOption);
-        break;
-        case 2:
-        printf("Your choice is %d\n", userOption);
-        printf("Please enter the username:\t");
-        printf("\nPlease enter the message:\t");
-        fgets(message, SENDBUFSIZE, stdin);
-        printf("%s", message);
-
-        echoStringLen = strlen(message); /* Determine input length */
-
-        /* Send the string to the server */
-        if (send(sock, message, echoStringLen, 0) != echoStringLen)
-        DieWithError("send() sent a different number of bytes than expected");
-        break;
-        case 3:
-        printf("Your choice is %d\n", userOption);
-
-        /* Receive the same string back from the server */
-        totalBytesRcvd = 0;
-        printf("Received: "); /* Setup to print the echoed string */
-        while (totalBytesRcvd < echoStringLen)
-        {
-        
-            /* Receive up to the buffer size (minus i to leave space for a null terminator) bytes from the sender */
-            if ((bytesRcvd = recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0)
-                DieWithError("recv() failed or connection closed prematurely");
-            totalBytesRcvd += bytesRcvd; /* Keep tally of total bytes */
-            echoBuffer[bytesRcvd] = '\0'; /* Terminate the string! */
-            printf(echoBuffer); /* Print the echo buffer */
-        }
-        break;
-        case 4:
-        printf("Your choice is %d\n", userOption);
-        socketOpen = 0;
-        // close(sock);
-        break;
-        case 5:
-        printf("Your choice is %d\n", userOption);
-        break;
-        case 6:
-        printf("Your choice is %d\n", userOption);
-        socketOpen = 0;
-        // close(sock);
-        break;
-    }
-
-    /*Input Checkers*/
-    printf("%s",servlP);
-    printf("%d\n",echoServPort);
-
-
-    if (socketInit < 1){
         /* Create a reliable, stream socket using TCP */
         if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
         DieWithError(" socket () failed") ;
@@ -126,13 +75,142 @@ int main(int argc, char *argv[])
         if (connect(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
         DieWithError(" connect () failed");
 
-        socketInit = 1;
+        printf("Please log in.\n");
+
+        /*Login*/
+        printf("Username: ");
+        fgets(login, LOGINBUFSIZE, stdin);
+        password[strcspn(login,"\n")] = 0;
+        printf("login : %s", login);
+        if (send(sock, login, strlen(login), 0) < 0){
+            DieWithError("send() user sent a different number of bytes than expected");
+        }
+
+        printf("Password: ");
+        fgets(password,PASSBUFSIZE,stdin);
+        password[strcspn(password,"\n")] = 0;
+        printf("password: %s", password);
+        if (send(sock, password, strlen(password), 0) < 0){
+            DieWithError("send() pass sent a different number of bytes than expected");
+        }
+
+        // if ((bytesRcvd = recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0){
+        //     DieWithError("recv() failed or connection closed prematurely");
+        // }
+        // echoBuffer[bytesRcvd] = '\0';
+        // printf("%s\n",echoBuffer);
+        
+        /*Socket Condition Initialized*/
+        socketOpen = 1;
+        break;
+
+        case 1:
+        /*Send option to server*/
+        printf("Your choice is %d\n", userOption);
+        option = "1";
+        if (send(sock, option, strlen(option), 0) < 0)
+        DieWithError("send() option sent a different number of bytes than expected");
+        printf("%s\n",option);
+
+        /*Get Bytes of Array*/
+        memset(userlist,0,strlen(userlist));
+        if ((recv(sock, userlist, 1024, 0)) <= 0)
+                DieWithError("recv() failed at getting num users or connection closed prematurely");
+
+        int numUsers = strtol(userlist,NULL,10);
+        printf("Num of users: %s\n",userlist);
+
+        /*Get Num of users*/
+   
+        printf("Users:\n");
+        if ((recv(sock, userlist, 1024, 0)) <= 0)
+                DieWithError("recv() failed at getting usernames or connection closed prematurely");
+        printf("%s",userlist);
+        
+        break;
+
+        case 2:
+        /*Send option to server*/
+        printf("Your choice is %d\n", userOption);
+        option = "2";
+        if (send(sock, option, strlen(option), 0) < 0)
+        DieWithError("send() option sent a different number of bytes than expected");
+        printf("%s\n",option);
+
+        // printf("Please enter the username: ");
+        printf("\nPlease enter the message: ");
+        fgets(message, SENDBUFSIZE, stdin);
+        message[strcspn(message,"\n")] = 0;
+
+        echoStringLen = strlen(message); /* Determine input length */
+
+        /* Send the string to the server */
+        if (send(sock, message, strlen(message), 0) < 0)
+        DieWithError("send() option sent a different number of bytes than expected");
+        printf("%s\n",message);
+        break;
+
+        case 3:
+        /*Send option to server*/
+        printf("Your choice is %d\n", userOption);
+        option = "3";
+        if (send(sock, option, strlen(option), 0) < 0)
+        DieWithError("send() option sent a different number of bytes than expected");
+        printf("%s\n",option);
+
+        totalBytesRcvd = 0;
+
+        /* Receive the same string back from the server */
+        printf("Received: "); /* Setup to print the echoed string */
+        while (totalBytesRcvd < echoStringLen)
+        {
+        
+            /* Receive up to the buffer size (minus i to leave space for a null terminator) bytes from the sender */
+            if ((bytesRcvd = recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0)
+                DieWithError("recv() failed or connection closed prematurely");
+            totalBytesRcvd += bytesRcvd; /* Keep tally of total bytes */
+            echoBuffer[bytesRcvd] = '\0'; /* Terminate the string! */
+            printf(echoBuffer); /* Print the echo buffer */
+            printf("\n");
+        }
+        break;
+
+        case 4:
+        // /*Send option to server*/
+        // printf("Your choice is %d\n", userOption);
+        // option = "4";
+        // if (send(sock, option, strlen(option), 0) < 0)
+        // DieWithError("send() option sent a different number of bytes than expected");
+        // printf("%s\n",option);
+
+        socketOpen = 0;
+        // close(sock);
+        break;
+
+        case 5:
+        // /*Send option to server*/
+        // printf("Your choice is %d\n", userOption);
+        // option = "5";
+        // if (send(sock, option, strlen(option), 0) < 0)
+        // DieWithError("send() option sent a different number of bytes than expected");
+        // printf("%s\n",option);
+
+        break;
+        case 6:
+        printf("Your choice is %d\n", userOption);
+        socketOpen = 0;
+        // close(sock);
+        break;
     }
+
+    /*Input Checkers*/
+    // printf("%s",servlP);
+    // printf("%d\n",echoServPort);
 
     printf("\n"); /* Print a final linefeed */
     printf("Socket still open (1=True, 0=False):\t%d\n",socketOpen);
     } while(socketOpen == 1);
 
-    close(sock);
+    // close(sock);
     exit(0);
 }
