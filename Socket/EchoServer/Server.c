@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
     int servAddrLen;
     int max_sd, max_clients = 30, clientSockets[30], socketDescriptor, socketActivity, rVal, rVal2, err;
     fd_set readfds;
+    char *target =malloc(BUFFER);
     char *usermail =malloc(BUFFER);
     char *message =malloc(BUFFER);
     char *buffer =malloc(BUFFER);
@@ -200,6 +201,30 @@ servAddrLen = sizeof(echoServAddr);
                             memset(tempString,0,strlen(tempString));
                         }
                         else if (strcmp(option,"2")==0){
+                            /*Received by username*/
+                            if(recv(socketDescriptor, target, 1024, 0)>0){
+                                message[strcspn(target,"\n")] = 0;
+                                printf("Target User is : %s\n",target);
+                            }
+                            else{
+                                printf("Error in targeting user.");
+                                exit(-1);
+                            }
+
+                            /*Use username to find which socket the messagee's in*/
+                            for(int k = 0; k < num_users; k++){
+                                if(strcmp(target,accounts[k].username) == 0){
+                                    printf("Target Matched!\n");
+                                    // target = accounts[k].username;
+                                    strcpy(target,accounts[k].username);
+                                    break;
+                                } 
+                                else{
+                                    printf("No Match\n");
+                                }
+
+                            }
+
                             if(rVal2 = recv(socketDescriptor, message, 1024, 0)>0){
                                 message[strcspn(message,"\n")] = 0;
                                 printf("Message is : %s\n",message);
@@ -211,21 +236,27 @@ servAddrLen = sizeof(echoServAddr);
                             }
                         }
                         else if (strcmp(option,"3")==0){
-                            /*Received by username*/
-                            if(rVal2 = recv(socketDescriptor, message, 1024, 0)>0){
-                                message[strcspn(message,"\n")] = 0;
-                                printf("Message is : %s\n",message);
+                            /*Acquire Target FDID*/
+                            int targetfdid;
+                            for(int k = 0; k < num_users; k++){
+                                if(strcmp(target,accounts[k].username) == 0){
+                                    printf("Target Matched2!\n");
+                                    targetfdid = accounts[k].fdid;
+                                    printf("fdid: %d", targetfdid);
+                                    send(targetfdid, message, strlen(message), 0);
+                                    memset(target,0,strlen(target));
+                                    memset(message,0,strlen(message));
+
+                                    break;
+                                } 
+                                else{
+                                    printf("No Match2\n");
+                                }
 
                             }
-                            else{
-                                printf("Error in message.");
-                                exit(-1);
-                            }
-
-                            /*Use username to find which socket the messagee's in*/
-
-                            send(socketDescriptor, message, strlen(message), 0);
-                            memset(message,0,strlen(message));
+                            
+                            // send(socketDescriptor, message, strlen(message), 0);
+                            // memset(message,0,strlen(message));
                         }
                         memset(buffer,0,strlen(buffer));
                     }
