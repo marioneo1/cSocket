@@ -26,6 +26,8 @@ int main(int argc, char *argv[])
 {
     int servSock; /* Socket descriptor for server */
     int clntSock; /* Socket descriptor for client */
+    int newSock;
+    int chatsd1,chatsd2;
     struct sockaddr_in echoServAddr; /* Local address */
     struct sockaddr_in echoClntAddr; /* Client address */
     unsigned short echoServPort; /* Server port */
@@ -36,11 +38,13 @@ int main(int argc, char *argv[])
     char *target =malloc(BUFFER);
     char *usermail =malloc(BUFFER);
     char *message =malloc(BUFFER);
+    char *chat =malloc(BUFFER);
     char *buffer =malloc(BUFFER);
     char *tempString =malloc(BUFFER);
     char *option = (char*)malloc(2*sizeof(char));
     int num_users = 2;
     char uval[25], pval[25];
+    char *input = (char*)malloc(BUFFER);
 
     struct Account{
     char username[25];
@@ -52,19 +56,14 @@ int main(int argc, char *argv[])
     struct Account bob = {"Bob", "56789"};
     struct Account accounts[2] = {alice, bob};
 
-
-    if (argc != 2) /* Test for correct number of arguments */
-    {
-        fprintf(stderr, "Usage: %s <Server Port>\n", argv[0]) ;
-        exit(1);
-    }
-
     /*Zero out client sockets*/
     for(int i =0; i < max_clients; i++){
         clientSockets[i] = 0;
     }
 
-    echoServPort = atoi(argv[1]); /* First arg: local port */
+    printf("Port number: ");
+    fgets(input, BUFFER, stdin);
+    echoServPort = strtol(input, NULL, 10);
 
     /* Create socket for incoming connections */
     if ((servSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
@@ -146,16 +145,16 @@ servAddrLen = sizeof(echoServAddr);
             if(recv(clntSock, buffer, 1024, 0)>0){
                 buffer[strcspn(buffer,"\n")] = 0; /*Remove leftover newline from fgets*/
                 strcpy(uval,buffer); /*Copy buffer value to uval*/
-                printf("uval : %s\n",uval);
+                // printf("uval : %s\n",uval);
             }
 
             if(recv(clntSock, buffer, 1024, 0)>0){
                 buffer[strcspn(buffer,"\n")] = 0; /*Remove leftover newline from fgets*/
                 strcpy(pval,buffer);
-                printf("pval : %s\n",pval);
+                // printf("pval : %s\n",pval);
             }
-            printf("Buffer Result in ServSock: %s\n", buffer);
 
+            // int userFound = 0;
             for(int i=0;i<num_users;i++){
                 // printf("uval:%s pass:%s\n", uval,pval);
                 // printf("User comp: %d, Pass comp %d\n",strcmp(accounts[i].username,uval),strcmp(accounts[i].password,pval));
@@ -163,9 +162,16 @@ servAddrLen = sizeof(echoServAddr);
                 if((strcmp(accounts[i].username,uval) == 0) && (strcmp(accounts[i].password,pval) == 0)){ /*Compare username and password*/
                     printf("success!\n");
                     accounts[i].fdid = clntSock; /*Assign socket if succesful*/
+                    // userFound = 1;
                     break;
                 }
-            } 
+            }
+            // if (userFound == 1){
+            //     userFound = 0;
+            // }
+            // else{
+            //     close(clntSock);
+            // }
         }
         memset(buffer,0,strlen(buffer));
             for (int i=0; i < max_clients; i++){
@@ -240,9 +246,11 @@ servAddrLen = sizeof(echoServAddr);
                             int targetfdid;
                             for(int k = 0; k < num_users; k++){
                                 if(strcmp(target,accounts[k].username) == 0){
-                                    printf("Target Matched2!\n");
+                                    // printf("Target Matched2!\n");
                                     targetfdid = accounts[k].fdid;
-                                    printf("fdid: %d", targetfdid);
+                                    // printf("fdid: %d\n", targetfdid);
+                                    int messageSize = sizeof(message);
+                                    // printf("%d\n",messageSize);
                                     send(targetfdid, message, strlen(message), 0);
                                     memset(target,0,strlen(target));
                                     memset(message,0,strlen(message));
@@ -254,10 +262,16 @@ servAddrLen = sizeof(echoServAddr);
                                 }
 
                             }
-                            
                             // send(socketDescriptor, message, strlen(message), 0);
                             // memset(message,0,strlen(message));
                         }
+                        else if (strcmp(option,"4")==0){
+                            close(socketDescriptor);
+                        }
+                        else if (strcmp(option,"5")==0){
+                            close(socketDescriptor);
+                        }
+                        
                         memset(buffer,0,strlen(buffer));
                     }
                     // HandleTCPClient (socketDescriptor);
