@@ -22,11 +22,13 @@ void HandleTCPClient(int clntSocket)
         close(clntSocket);
     }
     if(firstInstance < 1){
-        printf("%s", echoBuffer);
-
-        // /* Send message to client */
-        // if (send(clntSocket, echoBuffer, recvMsgSize, 0) != recvMsgSize)
-        //     DieWithError("send() failed");
+        printf("From client: %s", echoBuffer);
+        printf("Enter message:");
+        fgets(buffer, RCVBUFSIZE, stdin); 
+        if (send(clntSocket, buffer, RCVBUFSIZE, 0) < 0)
+            DieWithError("send() failed");
+        strcpy(buffer,"");
+        
     }
 
     firstInstance = 1;
@@ -34,20 +36,29 @@ void HandleTCPClient(int clntSocket)
     /* Send received string and receive again until end of transmission */
     while (recvMsgSize > 0) /* zero indicates end of transmission */
     {
-        
-        /* Send message to client */
-        if (send(clntSocket, echoBuffer, recvMsgSize, 0) != recvMsgSize)
-            DieWithError("send() failed");
-
+        printf("If you want to exit chat please type 'Bye'\n");
         /* See if there is more data to receive */
         if ((recvMsgSize = recv(clntSocket, echoBuffer, RCVBUFSIZE, 0)) < 0){
             printf("Recieve message failed2 \n");
             close(clntSocket);
         }
-
         echoBuffer[recvMsgSize] = '\0'; /* Terminate the string! */
-        printf("%s", echoBuffer);
-
+        printf("From client: %s", echoBuffer);
+        if (strcmp(echoBuffer,"Bye\n")==0){
+            close(clntSocket);
+            exit(1);
+        }
         strcpy(echoBuffer,"");
+
+        printf("Enter message:");
+        fgets(buffer, RCVBUFSIZE, stdin); 
+        /* Send message to client */
+        if (send(clntSocket, buffer, RCVBUFSIZE, 0) < 0)
+            DieWithError("send() failed");
+        if (strcmp(buffer,"Bye\n")==0){
+            close(clntSocket);
+            exit(1);
+        }
+        strcpy(buffer,"");
     }
 }

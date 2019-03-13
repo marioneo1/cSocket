@@ -263,11 +263,13 @@ int main(int argc, char *argv[])
         printf("Enter Message: ");
         fgets(c2cString, RCVBUFSIZE, stdin); 
         c2cStringLen = strlen(c2cString);
+        printf("If you want to exit chat please type 'Bye'\n");
         int bytesSentToClient;
 
         /* Send the string to the client */
         if ((bytesSentToClient = send(sock, c2cString, c2cStringLen, 0)) != c2cStringLen)
         DieWithError("send() sent a different number of bytes than expected");
+        strcpy(c2cString,"");
 
 
         /* Receive the string back from the client */
@@ -275,12 +277,17 @@ int main(int argc, char *argv[])
 
         while (c2cTotalBytesRcvd < c2cStringLen)
             {
-        
             /* Receive up to the buffer size (minus i to leave space for a null terminator) bytes from the sender */
             if ((c2cBytesRcvd = recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0)
                 DieWithError("recv() failed or connection closed prematurely");
+            if (strcmp(echoBuffer,"Bye\n")==0){
+            close(sock);
+            exit(1);
+            }
             c2cTotalBytesRcvd += c2cBytesRcvd; /* Keep tally of total bytes */
             echoBuffer[c2cBytesRcvd] = '\0'; /* Terminate the string! */
+            printf("From server: %s",echoBuffer);
+            strcpy(echoBuffer,"");
             }
         }
 

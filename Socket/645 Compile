@@ -1,0 +1,9 @@
+To run:
+
+Server (in EchoServer folder)
+gcc -I -Wall -o program DieWithError.c Server.c HandleTCPClient.c
+./program
+
+Client (in EchoClient folder)
+gcc -I -Wall  -o client Client.c DieWithError.c HandleTCPClient.c
+./client
